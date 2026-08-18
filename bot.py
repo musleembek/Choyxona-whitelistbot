@@ -1,22 +1,15 @@
 import os
-import asyncio
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+import telebot
+from telebot import types
 
+# Token va Admin ID
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8138358819:AAGpKlT7btsq8pve7xKdNqeWqTy13GlU_M4")
 ADMIN_ID = os.getenv("ADMIN_ID", "1860260857")
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(storage=MemoryStorage())
+bot = telebot.TeleBot(BOT_TOKEN)
 
-class Registration(StatesGroup):
-    rules_agree = State()
-    phone = State()
-    nickname = State()
+# Vaqtinchalik ma'lumotlarni saqlash uchun
+user_data = {}
 
 RULES_TEXT = """📜 **Minecraft Server Qoidalari:**
 
@@ -41,48 +34,39 @@ RULES_TEXT = """📜 **Minecraft Server Qoidalari:**
 
 💡 Yangi g'oyalar va muammolarga yechimlarni @musleembek ga telegramdan yozing!"""
 
-@dp.message(CommandStart())
-async def start_cmd(message: types.Message, state: FSMContext):
-    kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="✅ Qoidalarga rozilik bildiraman")]],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
-    await message.answer(RULES_TEXT, reply_markup=kb, parse_mode="Markdown")
-    await state.set_state(Registration.rules_agree)
+@bot.message_handler(commands=['start'])
+def start_cmd(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    btn = types.KeyboardButton("✅ Qoidalarga rozilik bildiraman")
+    markup.add(btn)
+    bot.send_message(message.chat.id, RULES_TEXT, reply_markup=markup, parse_mode="Markdown")
 
-@dp.message(Registration.rules_agree, F.text == "✅ Qoidalarga rozilik bildiraman")
-async def process_rules(message: types.Message, state: FSMContext):
-    phone_kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="📱 Telefon raqamni yuborish", request_contact=True)]],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
-    await message.answer(
+@bot.message_handler(func=lambda m: m.text == "✅ Qoidalarga rozilik bildiraman")
+def agree_rules(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    btn = types.KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)
+    markup.add(btn)
+    bot.send_message(
+        message.chat.id, 
         "Ro'yxatdan o'tishni davom ettirish uchun telefon raqamingizni tasdiqlang.\n"
-        "Pastdagi '📱 Telefon raqamni yuborish' tugmasini bosing:",
-        reply_markup=phone_kb
+        "Pastdagi '📱 Telefon raqamni yuborish' tugmasini bosing:", 
+        reply_markup=markup
     )
-    await state.set_state(Registration.phone)
 
-@dp.message(Registration.phone, F.contact)
-async def process_phone(message: types.Message, state: FSMContext):
-    await state.update_data(phone=message.contact.phone_number)
-    await message.answer(
+@bot.message_handler(content_types=['contact'])
+def get_contact(message):
+    user_data[message.from_user.id] = {'phone': message.contact.phone_number}
+    msg = bot.send_message(
+        message.chat.id, 
         "Telefon raqamingiz tasdiqlandi! ✅\n\nEndi Minecraft'dagi taxallusingizni (Nickname) yozib yuboring:",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=types.ReplyKeyboardRemove()
     )
-    await state.set_state(Registration.nickname)
+    bot.register_next_step_handler(msg, get_nickname)
 
-@dp.message(Registration.phone)
-async def invalid_phone(message: types.Message):
-    await message.answer("❌ Ro'yxatdan o'tish uchun telefon raqamingizni pastdagi tugma orqali tasdiqlashingiz shart!")
-
-@dp.message(Registration.nickname)
-async def process_nickname(message: types.Message, state: FSMContext):
-    user_data = await state.get_data()
+def get_nickname(message):
+    chat_id = message.chat.id
     nickname = message.text.strip()
-    phone = user_data.get("phone")
+    phone = user_data.get(chat_id, {}).get('phone', 'Noma\'lum')
     username = f"@{message.from_user.username}" if message.from_user.username else "Mavjud emas"
 
     admin_text = (
@@ -92,22 +76,19 @@ async def process_nickname(message: types.Message, state: FSMContext):
         f"📞 **Tel:** `{phone}`\n"
         f"🎮 **Minecraft Nickname:** `{nickname}`"
     )
-    
+
     if ADMIN_ID:
         try:
-            await bot.send_message(chat_id=int(ADMIN_ID), text=admin_text, parse_mode="Markdown")
+            bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
         except Exception as e:
-            print(f"Adminga xabar yuborishda xato: {e}")
+            print(f"Adminga yuborishda xato: {e}")
 
-    await message.answer(
+    bot.send_message(
+        chat_id, 
         "🎉 **Tabriklaymiz!** Siz ro'yxatdan muvaffaqiyatli o'tdingiz.\n"
         "Sizning so'rovingiz adminlarga yuborildi. Tezada sizni Whitelist'ga qo'shishadi!"
     )
-    await state.clear()
-
-async def main():
-    print("Bot ishga tushdi...")
-    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    print("Bot ishga tushdi...")
+    bot.infinity_polling()

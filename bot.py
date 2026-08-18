@@ -39,7 +39,7 @@ def start_cmd(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     btn = types.KeyboardButton("✅ Qoidalarga rozilik bildiraman")
     markup.add(btn)
-    bot.send_message(message.chat.id, RULES_TEXT, reply_markup=markup)
+    bot.send_message(message.chat.id, RULES_TEXT, reply_markup=markup, parse_mode="HTML")
 
 @bot.message_handler(func=lambda m: m.text == "✅ Qoidalarga rozilik bildiraman")
 def agree_rules(message):

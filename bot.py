@@ -11,7 +11,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 # Vaqtinchalik ma'lumotlarni saqlash uchun
 user_data = {}
 
-RULES_TEXT = """📜 **Minecraft Server Qoidalari:**
+RULES_TEXT = """📜 <b>Minecraft Server Qoidalari:</b>
 
 1. Har qanday, kichikmi u yoki katta qoidabuzarlikni jazosi - BAN (butun umrlik)
 2. Har qanday so'kish va haqarotli so'zlar minecraft va discord serverlarda taqiqlanadi.
@@ -39,7 +39,7 @@ def start_cmd(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     btn = types.KeyboardButton("✅ Qoidalarga rozilik bildiraman")
     markup.add(btn)
-    bot.send_message(message.chat.id, RULES_TEXT, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, RULES_TEXT, reply_markup=markup, parse_mode="HTML")
 
 @bot.message_handler(func=lambda m: m.text == "✅ Qoidalarga rozilik bildiraman")
 def agree_rules(message):
@@ -66,27 +66,28 @@ def get_contact(message):
 def get_nickname(message):
     chat_id = message.chat.id
     nickname = message.text.strip()
-    phone = user_data.get(chat_id, {}).get('phone', 'Noma\'lum')
+    phone = user_data.get(chat_id, {}).get('phone', "Noma'lum")
     username = f"@{message.from_user.username}" if message.from_user.username else "Mavjud emas"
 
     admin_text = (
-        "📥 **Yangi o'yinchi ro'yxatdan o'tdi!**\n\n"
-        f"👤 **User:** {message.from_user.full_name} ({username})\n"
-        f"🆔 **ID:** `{message.from_user.id}`\n"
-        f"📞 **Tel:** `{phone}`\n"
-        f"🎮 **Minecraft Nickname:** `{nickname}`"
+        "📥 <b>Yangi o'yinchi ro'yxatdan o'tdi!</b>\n\n"
+        f"👤 <b>User:</b> {message.from_user.full_name} ({username})\n"
+        f"🆔 <b>ID:</b> <code>{message.from_user.id}</code>\n"
+        f"📞 <b>Tel:</b> <code>{phone}</code>\n"
+        f"🎮 <b>Minecraft Nickname:</b> <code>{nickname}</code>"
     )
 
     if ADMIN_ID:
         try:
-            bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
+            bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML")
         except Exception as e:
             print(f"Adminga yuborishda xato: {e}")
 
     bot.send_message(
         chat_id, 
-        "🎉 **Tabriklaymiz!** Siz ro'yxatdan muvaffaqiyatli o'tdingiz.\n"
-        "Sizning so'rovingiz adminlarga yuborildi. Tezada sizni Whitelist'ga qo'shishadi!"
+        "🎉 <b>Tabriklaymiz!</b> Siz ro'yxatdan muvaffaqiyatli o'tdingiz.\n"
+        "Sizning so'rovingiz adminlarga yuborildi. Tezada sizni Whitelist'ga qo'shishadi!",
+        parse_mode="HTML"
     )
 
 if __name__ == "__main__":
